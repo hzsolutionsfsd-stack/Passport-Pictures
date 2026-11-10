@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Custom Size Photo Capture</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: #1e1e2f;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .app {
+      max-width: 500px;
+      width: 100%;
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 24px 20px 28px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+      position: relative;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #1e1e2f;
+      text-align: center;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .sub {
+      text-align: center;
+      color: #555;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+
+    .camera-area {
+      position: relative;
+      background: #111;
+      border-radius: 24px;
+      overflow: hidden;
+      aspect-ratio: 1 / 1; /* Square viewfinder */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: inset 0 0 0 2px #e0e0e0;
+    }
+
+    #video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      background: #1a1a1a;
+    }
+
+    #previewCanvas {
+      display: none;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+
+    .passport-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      border-radius: 24px;
+    }
+
+    /* Permission overlay */
+    .permission-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(6px);
+      border-radius: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      text-align: center;
+      z-index: 100;
+      transition: opacity 0.3s;
+    }
+
+    .permission-overlay.hidden {
+      display: none;
+    }
+
+    .permission-overlay .icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .permission-overlay h2 {
+      color: #fff;
+      font-size: 1.3rem;
+      margin-bottom: 8px;
+    }
+
+    .permission-overlay p {
+      color: #ccc;
+      font-size: 0.85rem;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .permission-overlay .btn-allow {
+      padding: 16px 40px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 60px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 8px 16px -6px #3b82f6;
+      transition: all 0.15s;
+    }
+
+    .permission-overlay .btn-allow:active {
+      background: #2563eb;
+      transform: scale(0.97);
+    }
+
+    .permission-overlay .btn-allow:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Form Layouts */
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+    }
+
+    .input-group label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #333;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .input-group input {
+      padding: 12px 16px;
+      font-size: 1rem;
+      border: 2px solid #ddd;
+      border-radius: 12px;
+      outline: none;
+      transition: border 0.2s;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .input-group input:focus {
+      border-color: #3b82f6;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 16px 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 60px;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #f1f5f9;
+      color: #1e1e2f;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      box-shadow: 0 8px 16px -6px #3b82f6;
+    }
+
+    .btn-primary:active {
+      background: #2563eb;
+      transform: scale(0.97);
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .status-msg {
+      text-align: center;
+      font-size: 0.8rem;
+      color: #666;
+      min-height: 20px;
+      margin-top: 4px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.7rem;
+      color: #999;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <h1>📸 Photo Capture</h1>
+  <div class="sub">High resolution • Original picture</div>
+
+  <!-- Camera preview -->
+  <div class="camera-area">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="previewCanvas"></canvas>
+    <div class="passport-overlay"></div>
+  </div>
+
+  <!-- Permission Overlay -->
+  <div class="permission-overlay" id="permissionOverlay">
+    <div class="icon">📷</div>
+    <h2>Camera Access Needed</h2>
+    <p>This app needs your camera to take photos.<br>Permission is requested only once.</p>
+    <button class="btn-allow" id="allowCameraBtn">Allow Camera</button>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    
+    <!-- Admission Number -->
+    <div class="input-group">
+      <label for="admissionNo">Admission No (4 digits)</label>
+      <input type="text" id="admissionNo" maxlength="4" inputmode="numeric" placeholder="e.g. 1234" pattern="\d*">
+    </div>
+
+    <!-- Custom Size (Inches) -->
+    <div class="form-row">
+      <div class="input-group">
+        <label for="widthInches">Width (inches)</label>
+        <input type="number" id="widthInches" step="0.1" min="0.5" max="10" value="2">
+      </div>
+      <div class="input-group">
+        <label for="heightInches">Height (inches)</label>
+        <input type="number" id="heightInches" step="0.1" min="0.5" max="10" value="2">
+      </div>
+    </div>
+    <div style="font-size: 0.7rem; color: #888; text-align: center; margin-top: -8px;">
+      Default is 2x2 inches (Passport size) at 300 DPI
+    </div>
+
+    <!-- Buttons -->
+    <div class="action-buttons">
+      <button class="btn" id="switchCameraBtn" title="Switch camera" disabled>🔄 Switch</button>
+      <button class="btn btn-primary" id="captureBtn" disabled>📷 Capture</button>
+    </div>
+    <button class="btn" id="saveBtn" disabled>💾 Save to Photos</button>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+  <div class="footer-note">Photos saved to default gallery</div>
+</div>
+
+<script>
+  (function() {
+    // ---------- DOM elements ----------
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('previewCanvas');
+    const admissionInput = document.getElementById('admissionNo');
+    const widthInput = document.getElementById('widthInches');
+    const heightInput = document.getElementById('heightInches');
+    const captureBtn = document.getElementById('captureBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const switchBtn = document.getElementById('switchCameraBtn');
+    const statusMsg = document.getElementById('statusMsg');
+    const permissionOverlay = document.getElementById('permissionOverlay');
+    const allowCameraBtn = document.getElementById('allowCameraBtn');
+
+    // ---------- State ----------
+    let stream = null;
+    let currentFacingMode = 'user';
+    let capturedImageData = null;
+    
+    // Standard print resolution (300 DPI ensures high quality)
+    const DPI = 300;
+
+    // ---------- Helper: show status ----------
+    function setStatus(text, isError = false) {
+      statusMsg.textContent = text;
+      statusMsg.style.color = isError ? '#b91c1c' : '#666';
+    }
+
+    // ---------- Enable/disable UI ----------
+    function setUIEnabled(enabled) {
+      captureBtn.disabled = !enabled;
+      switchBtn.disabled = !enabled;
+    }
+
+    // ---------- Request camera permission ----------
+    async function requestCameraPermission() {
+      allowCameraBtn.disabled = true;
+      allowCameraBtn.textContent = 'Requesting...';
+
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: currentFacingMode },
+          audio: false
+        });
+
+        tempStream.getTracks().forEach(track => track.stop());
+        permissionOverlay.classList.add('hidden');
+        setStatus('✅ Camera permission granted');
+
+        await startCamera(currentFacingMode);
+        setUIEnabled(true);
+
+      } catch (err) {
+        console.error('Permission error:', err);
+        allowCameraBtn.disabled = false;
+        allowCameraBtn.textContent = 'Allow Camera';
+
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setStatus('❌ Camera permission denied. Please allow camera in browser settings.', true);
+          permissionOverlay.querySelector('p').innerHTML =
+            'Camera access was denied.<br>Please allow camera access in your browser settings, then reload the page.';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          setStatus('❌ No camera device found.', true);
+          permissionOverlay.querySelector('p').innerHTML =
+            'No camera was found on this device.';
+        } else {
+          setStatus('❌ Camera error: ' + err.message, true);
+        }
+      }
+    }
+
+    // ---------- Start camera stream ----------
+    async function startCamera(facingMode = 'user') {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+
+      const constraints = {
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 1920 }, // Request high res from camera
+          height: { ideal: 1080 }
+        },
+        audio: false
+      };
+
+      try {
+        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+        stream = newStream;
+        video.srcObject = newStream;
+        await video.play();
+        video.style.display = 'block';
+        canvas.style.display = 'none';
+        setStatus('Camera ready');
+        return true;
+      } catch (err) {
+        console.error('Error starting camera:', err);
+        setStatus('❌ Could not start camera: ' + err.message, true);
+        return false;
+      }
+    }
+
+    // ---------- Switch camera ----------
+    async function switchCamera() {
+      currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      setStatus(`Switching to ${currentFacingMode} camera...`);
+      const success = await startCamera(currentFacingMode);
+      if (!success) {
+        currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+      }
+    }
+
+    // ---------- Validate admission number ----------
+    function getAdmissionNo() {
+      const val = admissionInput.value.trim();
+      if (/^\d{4}$/.test(val)) return val;
+      return null;
+    }
+
+    // ---------- Capture photo ----------
+    function capturePhoto() {
+      const admissionNo = getAdmissionNo();
+      if (!admissionNo) {
+        setStatus('⚠️ Enter a valid 4-digit admission number', true);
+        admissionInput.focus();
+        return;
+      }
+
+      // Validate size inputs
+      let widthIn = parseFloat(widthInput.value);
+      let heightIn = parseFloat(heightInput.value);
+      
+      if (isNaN(widthIn) || widthIn <= 0) widthIn = 2;
+      if (isNaN(heightIn) || heightIn <= 0) heightIn = 2;
+
+      if (!video.videoWidth || !video.videoHeight) {
+        setStatus('⚠️ Camera not ready, please wait', true);
+        return;
+      }
+
+      // Calculate exact pixel dimensions based on inches and DPI
+      const targetWidthPx = Math.round(widthIn * DPI);
+      const targetHeightPx = Math.round(heightIn * DPI);
+
+      const rawCanvas = document.createElement('canvas');
+      rawCanvas.width = video.videoWidth;
+      rawCanvas.height = video.videoHeight;
+      const rawCtx = rawCanvas.getContext('2d');
+      rawCtx.drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
+
+      // We need to crop the center of the video to match the aspect ratio of the custom size
+      const targetRatio = targetWidthPx / targetHeightPx;
+      const videoRatio = rawCanvas.width / rawCanvas.height;
+      
+      let cropWidth, cropHeight, offsetX, offsetY;
+
+      if (videoRatio > targetRatio) {
+        // Video is wider than target - crop sides
+        cropHeight = rawCanvas.height;
+        cropWidth = cropHeight * targetRatio;
+        offsetX = (rawCanvas.width - cropWidth) / 2;
+        offsetY = 0;
+      } else {
+        // Video is taller than target - crop top/bottom
+        cropWidth = rawCanvas.width;
+        cropHeight = cropWidth / targetRatio;
+        offsetX = 0;
+        offsetY = (rawCanvas.height - cropHeight) / 2;
+      }
+
+      const finalCanvas = document.createElement('canvas');
+      finalCanvas.width = targetWidthPx;
+      finalCanvas.height = targetHeightPx;
+      const finalCtx = finalCanvas.getContext('2d');
+
+      // Draw cropped and scaled image
+      finalCtx.drawImage(
+        rawCanvas, 
+        offsetX, offsetY, cropWidth, cropHeight, 
+        0, 0, targetWidthPx, targetHeightPx
+      );
+
+      // Draw admission number at bottom
+      // Font size scales with image height, but kept small
+      const fontSize = Math.max(16, Math.round(targetHeightPx * 0.04)); 
+      const text = admissionNo;
+      finalCtx.font = `bold ${fontSize}px "Segoe UI", system-ui, sans-serif`;
+      finalCtx.textAlign = 'center';
+      finalCtx.textBaseline = 'bottom';
+
+      const textWidth = finalCtx.measureText(text).width;
+      const padding = fontSize * 0.3;
+      const x = targetWidthPx / 2;
+      const y = targetHeightPx - (fontSize * 0.5); // Small margin from bottom
+
+      // Semi-transparent white background behind text for readability
+      finalCtx.fillStyle = 'rgba(255,255,255,0.7)';
+      finalCtx.fillRect(
+        x - textWidth/2 - padding, 
+        y - fontSize - padding, 
+        textWidth + padding*2, 
+        fontSize + padding*2
+      );
+
+      // Draw text
+      finalCtx.fillStyle = '#000000';
+      finalCtx.fillText(text, x, y);
+
+      const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.95); // JPEG is good for photos
+      capturedImageData = { 
+        dataUrl, 
+        width: targetWidthPx, 
+        height: targetHeightPx 
+      };
+
+      // Display preview
+      canvas.width = targetWidthPx;
+      canvas.height = targetHeightPx;
+      const displayCtx = canvas.getContext('2d');
+      displayCtx.drawImage(finalCanvas, 0, 0);
+
+      video.style.display = 'none';
+      canvas.style.display = 'block';
+
+      saveBtn.disabled = false;
+      setStatus(`✅ Captured: ${targetWidthPx}x${targetHeightPx} px. Ready to save.`);
+    }
+
+    // ---------- Save photo ----------
+    function savePhoto() {
+      if (!capturedImageData) {
+        setStatus('⚠️ No photo captured yet', true);
+        return;
+      }
+
+      const link = document.createElement('a');
+      link.href = capturedImageData.dataUrl;
+      link.download = `photo_${Date.now()}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setStatus('📁 Photo saved to downloads / photos folder');
+    }
+
+    // ---------- Event listeners ----------
+    allowCameraBtn.addEventListener('click', requestCameraPermission);
+
+    captureBtn.addEventListener('click', () => {
+      // If previewing, go back to live camera
+      if (canvas.style.display === 'block') {
+        video.style.display = 'block';
+        canvas.style.display = 'none';
+        setStatus('Live camera ready. Press capture again.');
+        return;
+      }
+      capturePhoto();
+    });
+
+    saveBtn.addEventListener('click', savePhoto);
+
+    switchBtn.addEventListener('click', async () => {
+      if (canvas.style.display === 'block') {
+        video.style.display = 'block';
+        canvas.style.display = 'none';
+      }
+      await switchCamera();
+    });
+
+    // Restrict admission input to numbers
+    admissionInput.addEventListener('input', (e) => {
+      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+    });
+
+    // Cleanup
+    window.addEventListener('beforeunload', () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    });
+
+  })();
+</script>
+
+</body>
+</html>
